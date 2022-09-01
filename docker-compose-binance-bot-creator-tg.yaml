@@ -1,0 +1,23 @@
+version: '3'
+
+
+services:
+  binance-bot-creator-tg:
+    image: haynesx15/binance-bot-creator-tg:${TAG}
+    container_name: binance-bot-creator-tg
+    command: >
+      sh -c "
+      python -u tg.py"
+    ports:
+      - 8010:8010
+    expose:
+      - 8010
+    env_file:
+      - ../env/binance-bot-creator.env
+    volumes:
+      - ../binance-bot-creator:/home/binance-bot-creator-tg/googleEnv/
+networks:
+    default:
+        external:
+            name: binance_bot_creator_network
+
