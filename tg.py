@@ -1,7 +1,7 @@
 from email.policy import default
 from sqlalchemy.orm import sessionmaker, Session, declarative_base, relationship
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Boolean, inspect
-from database_settings import session, engine, Sheet_Instance
+from database_settings import engine, Sheet_Instance
 import os
 import telebot
 
@@ -47,26 +47,52 @@ def check_for_sheet_updates():
     worksheetIDs = []
 
     for eachWorksheet in worksheet_list:
+        session = Session(bind=engine)
         sheetInDatabase = session.query(Sheet_Instance).filter(Sheet_Instance.gid == eachWorksheet.id).first()
         if sheetInDatabase:
             if sheetInDatabase.sheet_name_lower != eachWorksheet.title.lower():
-                sheetInDatabase.sheet_name_lower = eachWorksheet.title.lower()
+                try:
+                    sheetInDatabase.sheet_name_lower = eachWorksheet.title.lower()
+                    session.commit()
+                except Exception as e:
+                    session.rollback()
+                    print(e)
+                    session.close()
+                    return
+
+
             
             if sheetInDatabase.sheet_name != eachWorksheet.title:
                 bot.send_message(main_chat_id, f"Sheet Name: '{sheetInDatabase.sheet_name}' Changed to '{eachWorksheet.title}'")
-                sheetInDatabase.sheet_name = eachWorksheet.title
+                try:
+                    sheetInDatabase.sheet_name = eachWorksheet.title
+                    session.commit()
+                except Exception as e:
+                    session.rollback()
+                    print(e)
+                    session.close()
+                    return
+
                 
             
             
-            session.commit()
+            session.close()
         worksheetIDs.append(eachWorksheet.id)
     
 
-    
+    session = Session(bind=engine)
     allSheetsNotOnGoogleQuery = session.query(Sheet_Instance).filter(Sheet_Instance.gid.not_in(worksheetIDs))
     allSheetsNotOnGoogle = allSheetsNotOnGoogleQuery.all()
-    allSheetsNotOnGoogleQuery.delete()
-    session.commit()
+    try:
+        allSheetsNotOnGoogleQuery.delete()
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(e)
+        session.close()
+        return
+
+    session.close()
 
     for eachSheetNotOnGoogle in allSheetsNotOnGoogle:
         bot.send_message(main_chat_id, f"{eachSheetNotOnGoogle.sheet_name} Removed.")
@@ -141,16 +167,31 @@ def start_instance(message):
             bot.reply_to(message, "Invalid Command. Invalid Format.")
             return
         
+        session = Session(bind=engine)
+        
         sheetByName = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower == sheetName).first()
         if sheetByName:
-            sheetByName.active = True
-            session.commit()
+            try:
+                sheetByName.active = True
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                session.close()
+                print(e)
+                bot.send_message(main_chat_id, f"ERROR on poll: {e}")
+                return
+            
+            session.close()
             bot.reply_to(message, f"Now Polling for Sheet: '{sheetByName.sheet_name}'")
             time.sleep(1)
         else:
             time.sleep(1)
             bot.reply_to(message, "No such sheets exists. Please try again.")
     except Exception as e:
+        try:
+            session.close()
+        except:
+            pass
         time.sleep(5)
         bot.send_message(main_chat_id, f"ERROR on poll: {e}")
         time.sleep(5)
@@ -190,13 +231,28 @@ def set_notifications(message):
             bot.reply_to(message, "Invalid Command. Invalid Format.")
             return
         
+        session = Session(bind=engine)
 
         sheetByName = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower == sheetName.lower()).first()
-        sheetByName.notification_chat_id = telegramChatID
-        session.commit()
+        try:
+
+            sheetByName.notification_chat_id = telegramChatID
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(e)
+            bot.send_message(main_chat_id, f"ERROR on set_notif: {e}")
+            session.close()
+            return
+        
+        session.close()
 
         bot.send_message(main_chat_id, f"Notfication Chat Group Changed Successfully.")
     except Exception as e:
+        try:
+            session.close()
+        except:
+            pass
         time.sleep(5)
         bot.send_message(main_chat_id, f"ERROR on set_notif: {e}")
         time.sleep(5)
@@ -220,16 +276,32 @@ def end_polling(message):
             bot.reply_to(message, "Invalid Command. Invalid Format.")
             return
         
+        session = Session(bind=engine)
         sheetByName = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower == sheetName).first()
         if sheetByName:
-            sheetByName.active = False
-            session.commit()
+            try:
+
+                sheetByName.active = False
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                print(e)
+                bot.send_message(main_chat_id, f"ERROR on end: {e}")
+                session.close()
+                return
+            
+            session.close()
+
             bot.reply_to(message, f"Polling Ended for Sheet: '{sheetByName.sheet_name}'")
             time.sleep(1)
         else:
             time.sleep(1)
             bot.reply_to(message, "No such sheets exists. Please try again.")
     except Exception as e:
+        try:
+            session.close()
+        except:
+            pass
         time.sleep(5)
         bot.send_message(main_chat_id, f"ERROR on end: {e}")
         time.sleep(5)
@@ -292,6 +364,7 @@ def change_keys(message):
             bot.reply_to(message, "Invalid Secret Key.")
             return
         
+        session = Session(bind=engine)
 
         sheetByName = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower == sheetNameLower).first()
         if not sheetByName:
@@ -309,10 +382,27 @@ def change_keys(message):
             time.sleep(3)
             return
 
+        try:
+            sheetByName.api_key = binance_api_key
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(e)
+            session.close()
+            return
+        
+        try:
+            sheetByName.api_secret = binance_api_secret
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(e)
+            session.close()
+            return
+        
+        session.close()
 
-        sheetByName.api_key = binance_api_key
-        sheetByName.api_secret = binance_api_secret
-        session.commit()
+        
 
         bot.reply_to(message, "Successfully Changed Binance API Details!")
 
@@ -321,6 +411,10 @@ def change_keys(message):
 
     except:
         bot.reply_to(message, "Invalid Command. Please Try Again.")
+        try:
+            session.close()
+        except:
+            pass
         return
     
 
@@ -388,51 +482,17 @@ def new_sheet(message):
         
 
 
-
+        check_for_sheet_updates()
+        time.sleep(1)
         worksheet_list = spreadsheet.worksheets()
 
 
         worksheetNames = []
 
         for eachWorksheet in worksheet_list:
-            sheetInDatabase = session.query(Sheet_Instance).filter(Sheet_Instance.gid == eachWorksheet.id).first()
-            if sheetInDatabase:
-                if sheetInDatabase.sheet_name_lower != eachWorksheet.title.lower():
-                    sheetInDatabase.sheet_name_lower = eachWorksheet.title.lower()
-                
-                if sheetInDatabase.sheet_name != eachWorksheet.title:
-                    bot.reply_to(message, f"Sheet Name: '{sheetInDatabase.sheet_name}' Changed to '{eachWorksheet.title}'")
-                    sheetInDatabase.sheet_name = eachWorksheet.title
-                    
-                
-                
-                session.commit()
             worksheetNames.append(eachWorksheet.title.lower())
         
-
         
-        allSheetsNotOnGoogleQuery = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower.not_in(worksheetNames))
-        allSheetsNotOnGoogle = allSheetsNotOnGoogleQuery.all()
-        allSheetsNotOnGoogleQuery.delete()
-        session.commit()
-
-        for eachSheetNotOnGoogle in allSheetsNotOnGoogle:
-            bot.reply_to(message, f"{eachSheetNotOnGoogle.sheet_name} Removed.")
-            time.sleep(2)
-        
-
-
-
-        
-
-
-        
-
-
-
-
-
-
 
 
         if sheetNameLower in worksheetNames:
@@ -441,7 +501,7 @@ def new_sheet(message):
 
 
         
-
+        session = Session(bind=engine)
         sheetByName = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower == sheetNameLower).first()
         if sheetByName:
             bot.reply_to(message, "Sheet Already Exists with this name. Please try again with a new name.")
@@ -492,16 +552,32 @@ def new_sheet(message):
         
 
 
-
-        newSheetInstance = Sheet_Instance(api_key=binance_api_key, api_secret=binance_api_secret, gid=worksheet.id, sheet_name=sheetName, sheet_name_lower=sheetNameLower, active=False)
-
-        session.add(newSheetInstance)
-        session.commit()
+        try:
+            newSheetInstance = Sheet_Instance(api_key=binance_api_key, api_secret=binance_api_secret, gid=worksheet.id, sheet_name=sheetName, sheet_name_lower=sheetNameLower, active=False)
+        except Exception as e:
+            session.close()
+            print(e)
+            return
+        
+        try:
+            session.add(newSheetInstance)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(e)
+            session.close()
+            return
+        
+        session.close()
 
         bot.reply_to(message, f"Sheet has been created! ✅\nTo start polling binance for trades, type:\n`/poll {sheetName}`", parse_mode="Markdown")
     except Exception as e:
         time.sleep(6)
         bot.send_message(main_chat_id, f"ERROR on NEWSHEET: {e}")
+        try:
+            session.close()
+        except:
+            pass
 
 
     
@@ -519,7 +595,7 @@ while True:
         bot.polling()
     except Exception:
         print("ERROR ON TG BOT HERE tg.py")
-        time.sleep(10)
+        time.sleep(40)
 
 
 
