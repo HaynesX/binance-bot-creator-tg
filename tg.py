@@ -58,7 +58,7 @@ def check_for_sheet_updates(session):
                 
             
             
-            session.commit()
+            # session.commit()
         worksheetIDs.append(eachWorksheet.id)
     
 
@@ -66,7 +66,7 @@ def check_for_sheet_updates(session):
     allSheetsNotOnGoogleQuery = session.query(Sheet_Instance).filter(Sheet_Instance.gid.not_in(worksheetIDs))
     allSheetsNotOnGoogle = allSheetsNotOnGoogleQuery.all()
     allSheetsNotOnGoogleQuery.delete()
-    session.commit()
+    # session.commit()
 
     for eachSheetNotOnGoogle in allSheetsNotOnGoogle:
         bot.send_message(main_chat_id, f"{eachSheetNotOnGoogle.sheet_name} Removed.")
@@ -146,7 +146,7 @@ def start_instance(message):
                 sheetByName = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower == sheetName).first()
                 if sheetByName:
                     sheetByName.active = True
-                    session.commit()
+                    # session.commit()
                     bot.reply_to(message, f"Now Polling for Sheet: '{sheetByName.sheet_name}'")
                     time.sleep(1)
                 else:
@@ -197,7 +197,7 @@ def set_notifications(message):
 
                 sheetByName = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower == sheetName.lower()).first()
                 sheetByName.notification_chat_id = telegramChatID
-                session.commit()
+                # session.commit()
 
                 bot.send_message(main_chat_id, f"Notfication Chat Group Changed Successfully.")
             except Exception as e:
@@ -229,7 +229,7 @@ def end_polling(message):
                 sheetByName = session.query(Sheet_Instance).filter(Sheet_Instance.sheet_name_lower == sheetName).first()
                 if sheetByName:
                     sheetByName.active = False
-                    session.commit()
+                    # session.commit()
                     bot.reply_to(message, f"Polling Ended for Sheet: '{sheetByName.sheet_name}'")
                     time.sleep(1)
                 else:
@@ -326,7 +326,7 @@ def change_keys(message):
                 sheetByName.api_key = binance_api_key
                 sheetByName.api_secret = binance_api_secret
                 sheetByName.symbol = binance_symbol
-                session.commit()
+                # session.commit()
 
                 bot.reply_to(message, "Successfully Changed Binance API Details!")
 
@@ -507,7 +507,7 @@ def new_sheet(message):
                 newSheetInstance = Sheet_Instance(api_key=binance_api_key, api_secret=binance_api_secret, symbol=binance_symbol, gid=worksheet.id, sheet_name=sheetName, sheet_name_lower=sheetNameLower, active=False)
 
                 session.add(newSheetInstance)
-                session.commit()
+                # session.commit()
 
                 bot.reply_to(message, f"Sheet has been created! ✅\nTo start polling binance for trades, type:\n`/poll {sheetName}`", parse_mode="Markdown")
             except Exception as e:
