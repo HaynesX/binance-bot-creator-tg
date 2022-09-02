@@ -129,7 +129,7 @@ def check_for_sheet_updates(session):
 
 @bot.message_handler(commands=['poll'])
 def start_instance(message):
-    with Session() as session:
+    with Session(bind=engine) as session:
         with session.begin():
             try:
 
@@ -164,7 +164,7 @@ def start_instance(message):
 
 @bot.message_handler(commands=['set_notifications'])
 def set_notifications(message):
-    with Session() as session:
+    with Session(bind=engine) as session:
         with session.begin():
             try:
 
@@ -211,7 +211,7 @@ def set_notifications(message):
 
 @bot.message_handler(commands=['end'])
 def end_polling(message):
-    with Session() as session:
+    with Session(bind=engine) as session:
         with session.begin():
             try:
 
@@ -244,7 +244,7 @@ def end_polling(message):
 
 @bot.message_handler(commands=['changekeys'])
 def change_keys(message):
-    with Session() as session:
+    with Session(bind=engine) as session:
         with session.begin():
             try:
                 check_for_sheet_updates(session)
@@ -348,7 +348,7 @@ def change_keys(message):
 
 @bot.message_handler(commands=['new'])
 def new_sheet(message):
-    with Session() as session:
+    with Session(bind=engine) as session:
         with session.begin():
             try:
 
