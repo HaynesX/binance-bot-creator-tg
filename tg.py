@@ -507,6 +507,7 @@ def new_sheet(message):
                 newSheetInstance = Sheet_Instance(api_key=binance_api_key, api_secret=binance_api_secret, symbol=binance_symbol, gid=worksheet.id, sheet_name=sheetName, sheet_name_lower=sheetNameLower, active=False)
 
                 session.add(newSheetInstance)
+                session.flush()
                 # session.commit()
 
                 bot.reply_to(message, f"Sheet has been created! ✅\nTo start polling binance for trades, type:\n`/poll {sheetName}`", parse_mode="Markdown")
